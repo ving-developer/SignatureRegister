@@ -22,7 +22,7 @@ function Utils(errorOutputId) { // eslint-disable-line no-unused-vars
                     onloadCallback();
                 } else {
                     cv['onRuntimeInitialized']=()=>{
-                        console.log(cv.getBuildInformation());
+                        // console.log(cv.getBuildInformation());
                         onloadCallback();
                     }
                 }
