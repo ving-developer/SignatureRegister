@@ -3,7 +3,7 @@ var height;
 var width;
 const imageWidthPercent = (percentage) => Math.floor(width / 100 * percentage);
 const imageHeightPercent = (percentage) => Math.floor(height / 100 * percentage);
-var lastLineYAxis;
+var lastLineYAxis = 0;
 var linesArray = [];
 var subImagesArray = [];
 
@@ -18,7 +18,6 @@ class PairPoints{
 }
 
 function init() {
-	lastLineYAxis = 0
 	src = cv.imread('canvasInput');
 	height = src.matSize[0];
 	width = src.matSize[1];
@@ -30,8 +29,8 @@ function binarying(){
 	cv.adaptiveThreshold(src,src,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,55,8);
 	applyClosure();
 	splitImage(src);
-	cv.imshow('canvasOutput',subImagesArray[32]);
-	// cv.imshow('canvasOutput',src );
+	// cv.imshow('canvasOutput',subImagesArray[0]);
+	cv.imshow('canvasOutput',src );
 }
 
 function colorizeTransform(){
@@ -46,32 +45,37 @@ function splitImage(src){
 	for (let i = 0; i < lines.rows; ++i) {
 		let startPoint = new cv.Point(lines.data32S[i * 4], lines.data32S[i * 4 + 1]);
 		let endPoint = new cv.Point(lines.data32S[i * 4 + 2], lines.data32S[i * 4 + 3]);
-		if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(20)){
+		// if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(20)){
+		if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(8)){
 			linesArray.push(new PairPoints(startPoint,endPoint));
 			// cv.line(src, startPoint, endPoint, [0, 0, 255, 255]);
 		}
 	}
 	organizeTableLines();
+	realignImage();
 	for(let i = 0; i < linesArray.length -1; i++){
 		let startPoint = linesArray[i].startPoint;
 		let endPoint = linesArray[i].endPoint;
 		let nextStartPointY = linesArray[i+1].startPoint.y;
-		if(i == 0){
-			console.log(startPoint)
-			console.log(endPoint)
-			console.log(nextStartPointY)
-		}
 		let rect = new cv.Rect(startPoint.x, startPoint.y,
 			endPoint.x - startPoint.x, nextStartPointY - startPoint.y);
 		subImagesArray.push(src.roi(rect));
 	}
 }
 
+function realignImage(){
+	let firstLine = linesArray[linesArray.length - 1];
+	let angle = getLineAngle(firstLine.startPoint,firstLine.endPoint,false);
+	let center = new cv.Point(Math.floor(width/2),Math.floor(height/2));
+	let M = cv.getRotationMatrix2D(center, angle, 1.0);
+	cv.warpAffine(src, src, M, src.size(), cv.INTER_CUBIC);
+}
+
 function organizeTableLines(){
 	var newLinesArray = [];
 	linesArray.sort((a,b) => {
-		if(a.startPoint.y > b.startPoint.y) return 1;
-		if(a.startPoint.y < b.startPoint.y) return -1;
+		if(a.startPoint.y > b.startPoint.y) return -1;
+		if(a.startPoint.y < b.startPoint.y) return 1;
 		return 0;
 	});
 	linesArray.forEach(element => {
@@ -79,15 +83,19 @@ function organizeTableLines(){
 		let endPoint = element.endPoint;
 		if(compareLastLineYAxis(startPoint.y)){
 			cv.line(src, startPoint, endPoint, [255, 0, 0, 255]);
-			newLinesArray.push(element);
+			newLinesArray.unshift(element);
 		}
 	});
 	linesArray = newLinesArray;
 }
 
 function compareLastLineYAxis(yAxis){
-	let compare = lastLineYAxis + imageHeightPercent(2);
-	if(yAxis > compare){
+	if(lastLineYAxis == 0){
+		lastLineYAxis = yAxis;
+		return true;
+	}
+	let compare = lastLineYAxis - imageHeightPercent(2);
+	if(yAxis < compare){
 		lastLineYAxis = yAxis;
 		return true;
 	}
@@ -99,8 +107,9 @@ function isHorizontalLine(startPoint, endPoint){
 			|| getLineAngle(startPoint,endPoint) > 175 && getLineAngle(startPoint,endPoint) < 185;
 }
 
-function getLineAngle(startPoint,endPoint){
-	return  Math.abs(Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x) * 180.0 / Math.PI);
+function getLineAngle(startPoint,endPoint, abs = true){
+	return  abs ? Math.abs(Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x) * 180.0 / Math.PI) :
+	Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x) * 180.0 / Math.PI;
 }
 
 function invertImage(src){
@@ -132,7 +141,7 @@ function grayTransform(image){
 
 let utils = new Utils('errorMessage');
 
-utils.loadImageToCanvas('Assets/Images/page1.jpg', 'canvasInput');
+utils.loadImageToCanvas('Assets/Images/page2.jpg', 'canvasInput');
 utils.addFileInputHandler('fileInput', 'canvasInput');
 
 let tryIt = document.getElementById('tryIt');
