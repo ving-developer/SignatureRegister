@@ -29,7 +29,7 @@ function binarying(){
 	cv.adaptiveThreshold(src,src,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,55,8);
 	applyClosure();
 	splitImage(src);
-	// cv.imshow('canvasOutput',subImagesArray[0]);
+	// cv.imshow('canvasOutput',subImagesArray[32]);
 	cv.imshow('canvasOutput',src );
 }
 
@@ -52,14 +52,22 @@ function splitImage(src){
 		}
 	}
 	organizeTableLines();
-	realignImage();
 	for(let i = 0; i < linesArray.length -1; i++){
-		let startPoint = linesArray[i].startPoint;
-		let endPoint = linesArray[i].endPoint;
-		let nextStartPointY = linesArray[i+1].startPoint.y;
-		let rect = new cv.Rect(startPoint.x, startPoint.y,
-			endPoint.x - startPoint.x, nextStartPointY - startPoint.y);
-		subImagesArray.push(src.roi(rect));
+		let firstPoint = linesArray[i].startPoint;
+		let secondPoint = linesArray[i].endPoint;
+		let thirdPoint = linesArray[i+1].startPoint;
+		let fourthPoint = linesArray[i+1].endPoint;
+		let height = Math.sqrt((firstPoint.x-thirdPoint.x)*(firstPoint.x-thirdPoint.x) +
+			(firstPoint.y-thirdPoint.y)*(firstPoint.y-thirdPoint.y));
+		let width= Math.sqrt((firstPoint.x-secondPoint.x)*(firstPoint.x-secondPoint.x) +
+			(firstPoint.y-secondPoint.y)*(firstPoint.y-secondPoint.y));
+		let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [firstPoint.x, firstPoint.y, secondPoint.x,
+			secondPoint.y, thirdPoint.x, thirdPoint.y, fourthPoint.x, fourthPoint.y]);
+		let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, width, 0, 0, height, width, height]);
+		let M = cv.getPerspectiveTransform(srcTri, dstTri);
+		let dst = new cv.Mat();
+		cv.warpPerspective(src,dst, M, new cv.Size(width, height));
+		subImagesArray.push(dst);
 	}
 }
 
@@ -79,6 +87,7 @@ function organizeTableLines(){
 		return 0;
 	});
 	linesArray.forEach(element => {
+		element = getExtendedLine(element);
 		let startPoint = element.startPoint;
 		let endPoint = element.endPoint;
 		if(compareLastLineYAxis(startPoint.y)){
@@ -87,6 +96,14 @@ function organizeTableLines(){
 		}
 	});
 	linesArray = newLinesArray;
+}
+
+function getExtendedLine(pairPointLine){
+	let slop = (pairPointLine.endPoint.y - pairPointLine.startPoint.y) / (pairPointLine.endPoint.x - pairPointLine.startPoint.x);
+	let n = pairPointLine.startPoint.y - (slop * pairPointLine.startPoint.x);
+	let newStartPoint = new cv.Point(0,n);
+	let newEndPoint = new cv.Point(width, slop * width + n);
+	return new PairPoints(newStartPoint,newEndPoint);
 }
 
 function compareLastLineYAxis(yAxis){
