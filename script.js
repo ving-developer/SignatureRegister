@@ -29,8 +29,8 @@ function binarying(){
 	cv.adaptiveThreshold(src,src,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,55,8);
 	applyClosure();
 	splitImage(src);
-	// cv.imshow('canvasOutput',subImagesArray[32]);
-	cv.imshow('canvasOutput',src );
+	cv.imshow('canvasOutput',subImagesArray[9]);
+	// cv.imshow('canvasOutput',src );
 }
 
 function colorizeTransform(){
@@ -158,7 +158,7 @@ function grayTransform(image){
 
 let utils = new Utils('errorMessage');
 
-utils.loadImageToCanvas('Assets/Images/page2.jpg', 'canvasInput');
+utils.loadImageToCanvas('Assets/Images/page1.jpg', 'canvasInput');
 utils.addFileInputHandler('fileInput', 'canvasInput');
 
 let tryIt = document.getElementById('tryIt');
