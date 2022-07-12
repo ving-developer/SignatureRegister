@@ -6,6 +6,8 @@ const imageHeightPercent = (percentage) => Math.floor(height / 100 * percentage)
 var lastLineYAxis = 0;
 var linesArray = [];
 var subImagesArray = [];
+var kernel;
+var anchor;
 
 class PairPoints{
 	startPoint;
@@ -21,15 +23,17 @@ function init() {
 	src = cv.imread('canvasInput');
 	height = src.matSize[0];
 	width = src.matSize[1];
+	kernel = cv.Mat.ones(3, 3, cv.CV_8U);
+	anchor = new cv.Point(-1, -1);
 	binarying();
 }
 
 function binarying(){
 	grayTransform(src);
 	cv.adaptiveThreshold(src,src,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,55,8);
-	applyClosure();
+	applyDilation();
 	splitImage(src);
-	cv.imshow('canvasOutput',subImagesArray[9]);
+	cv.imshow('canvasOutput',subImagesArray[21]);
 	// cv.imshow('canvasOutput',src );
 }
 
@@ -45,8 +49,8 @@ function splitImage(src){
 	for (let i = 0; i < lines.rows; ++i) {
 		let startPoint = new cv.Point(lines.data32S[i * 4], lines.data32S[i * 4 + 1]);
 		let endPoint = new cv.Point(lines.data32S[i * 4 + 2], lines.data32S[i * 4 + 3]);
-		// if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(20)){
-		if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(8)){
+		if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(10)){
+		// if(isHorizontalLine(startPoint, endPoint) && startPoint.y > imageHeightPercent(8)){
 			linesArray.push(new PairPoints(startPoint,endPoint));
 			// cv.line(src, startPoint, endPoint, [0, 0, 255, 255]);
 		}
@@ -89,9 +93,9 @@ function organizeTableLines(){
 	linesArray.forEach(element => {
 		element = getExtendedLine(element);
 		let startPoint = element.startPoint;
-		let endPoint = element.endPoint;
+		// let endPoint = element.endPoint;
 		if(compareLastLineYAxis(startPoint.y)){
-			cv.line(src, startPoint, endPoint, [255, 0, 0, 255]);
+			// cv.line(src, startPoint, endPoint, [255, 0, 0, 255],3);
 			newLinesArray.unshift(element);
 		}
 	});
@@ -136,20 +140,20 @@ function invertImage(src){
 }
 
 function applyClosure(){
-	invertImage(src);
-	let kernel = cv.Mat.ones(3, 3, cv.CV_8U);
-	let anchor = new cv.Point(-1, -1);
-	applyDilation(src,kernel, anchor);
-	// applyErosion(src,kernel, anchor);
-	invertImage(src);
+	applyDilation();
+	applyErosion();
 }
 
-function applyDilation(src,kernel, anchor){
+function applyDilation(){
+	invertImage(src);
 	cv.dilate(src, src, kernel, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+	invertImage(src);
 }
 
-function applyErosion(src,kernel, anchor){
+function applyErosion(){
+	invertImage(src);
 	cv.erode(src, src, kernel, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+	invertImage(src);
 }
 
 function grayTransform(image){
@@ -158,7 +162,7 @@ function grayTransform(image){
 
 let utils = new Utils('errorMessage');
 
-utils.loadImageToCanvas('Assets/Images/page1.jpg', 'canvasInput');
+utils.loadImageToCanvas('Assets/Images/Template/page1-3.jpeg', 'canvasInput');
 utils.addFileInputHandler('fileInput', 'canvasInput');
 
 let tryIt = document.getElementById('tryIt');
